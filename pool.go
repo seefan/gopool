@@ -35,7 +35,7 @@ type Pool struct {
 	//lock
 	lock sync.Mutex
 	//increment count
-	AcquireIncrement int
+	MinPoolSize int
 	//time now
 	now time.Time
 	//get count
@@ -49,6 +49,9 @@ func (p *Pool) init() *Pool {
 	p.now = time.Now()
 	if p.WatchTime < 1 {
 		p.WatchTime = 1
+	}
+	if p.MinPoolSize < 1 {
+		p.MinPoolSize = 1
 	}
 	go p.watch()
 	return p
@@ -90,7 +93,7 @@ func (p *Pool) watch() {
 func (p *Pool) check() {
 	p.lock.Lock()
 	p.lock.Unlock()
-	if p.avgCurrent+p.AcquireIncrement < p.Length && !p.elements[p.Length-1].isUsed {
+	if p.avgCurrent+p.MinPoolSize < p.Length && !p.elements[p.Length-1].isUsed {
 		p.elements[p.Length-1].Value.Close()
 		p.Length -= 1
 	}
