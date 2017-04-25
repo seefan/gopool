@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/seefan/gopool"
 	"log"
-//	"math/rand"
+	//	"math/rand"
 	"strconv"
 	"sync"
 	"time"
@@ -18,7 +18,7 @@ func (t *TestValue) Close() error {
 }
 func main() {
 	p := gopool.NewPool()
-	p.AcquireIncrement = 3
+	p.MinPoolSize = 3
 	for i := 0; i < 100; i++ {
 		e := &TestValue{"name" + strconv.Itoa(i)}
 		p.Append(e)
