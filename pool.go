@@ -96,7 +96,7 @@ func (p *Pool) check() {
 	}
 }
 
-//element back,current -1
+//element back,Current -1
 func (p *Pool) Set(element *Element) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -120,7 +120,7 @@ func (p *Pool) CloseClient(element *Element) {
 	p.Length -= 1
 }
 
-//get a element,current +1
+//get a element,Current +1
 func (p *Pool) Get() (*Element, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()

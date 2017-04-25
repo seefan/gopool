@@ -3,8 +3,9 @@ package main
 import (
 	"github.com/seefan/gopool"
 	"log"
-	"math/rand"
+//	"math/rand"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -18,28 +19,31 @@ func (t *TestValue) Close() error {
 func main() {
 	p := gopool.NewPool()
 	p.AcquireIncrement = 3
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 100; i++ {
 		e := &TestValue{"name" + strconv.Itoa(i)}
 		p.Append(e)
 	}
-
-	go run(p, 0)
-	time.Sleep(time.Microsecond * 13)
-	go run(p, 10)
-	time.Sleep(time.Minute)
+	now := time.Now()
+	wait := new(sync.WaitGroup)
+	for i := 0; i < 83; i++ {
+		go run(p, wait)
+	}
+	wait.Wait()
+	println(time.Since(now).String())
 }
-func run(p *gopool.Pool, start int) {
-	for i := start; i < start+10; i++ {
+func run(p *gopool.Pool, wait *sync.WaitGroup) {
+	for i := 0; i < 1000; i++ {
+		wait.Add(1)
 		go func(index int) {
+			defer wait.Done()
 			c, e := p.Get()
 			if e != nil {
 				log.Print(e)
+				return
 			}
-			mss := rand.Intn(2000)
-			time.Sleep(time.Microsecond * time.Duration(mss))
+			time.Sleep(time.Millisecond)
 			p.Set(c)
 		}(i)
-		ms := rand.Intn(500)
-		time.Sleep(time.Microsecond * time.Duration(ms))
+		time.Sleep(time.Millisecond)
 	}
 }
