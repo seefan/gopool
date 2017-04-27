@@ -1,49 +1,117 @@
 package main
 
 import (
+	"fmt"
 	"github.com/seefan/gopool"
+	"github.com/ssdb/gossdb/ssdb"
 	"log"
-	//	"math/rand"
-	"strconv"
 	"sync"
 	"time"
 )
 
-type TestValue struct {
-	Name string
+type SSDBClient struct {
+	isOpen   bool
+	password string
+	host     string
+	port     int
+	conn     *ssdb.Client
 }
 
-func (t *TestValue) Close() error {
+//打开连接
+func (s *SSDBClient) Start() error {
+	conn, err := ssdb.Connect(s.host, s.port)
+	if err != nil {
+		return err
+	}
+	s.isOpen = true
+	s.conn = conn
 	return nil
 }
-func main() {
-	p := gopool.NewPool()
-	p.MinPoolSize = 3
-	for i := 0; i < 100; i++ {
-		e := &TestValue{"name" + strconv.Itoa(i)}
-		p.Append(e)
+func (s *SSDBClient) Close() error {
+	s.isOpen = false
+	if s.conn != nil {
+		return s.conn.Close()
 	}
-	now := time.Now()
-	wait := new(sync.WaitGroup)
-	for i := 0; i < 83; i++ {
-		go run(p, wait)
-	}
-	wait.Wait()
-	println(time.Since(now).String())
+	return nil
 }
-func run(p *gopool.Pool, wait *sync.WaitGroup) {
-	for i := 0; i < 1000; i++ {
-		wait.Add(1)
+func (s *SSDBClient) IsOpen() bool {
+	return s.isOpen
+}
+
+type Success struct {
+	count   int
+	success int
+	fail    int
+	lock    sync.Mutex
+	wait    sync.WaitGroup
+}
+
+func (s *Success) Add() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.wait.Add(1)
+	s.count += 1
+}
+func (s *Success) Ok() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.wait.Done()
+	s.success += 1
+}
+func (s *Success) Fail() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.wait.Done()
+	s.fail += 1
+}
+
+func (s *Success) Show() string {
+	s.wait.Wait()
+	return fmt.Sprintf("count:%d,success:%d,fail %d", s.count, s.success, s.fail)
+}
+func main() {
+
+	p := gopool.NewPool()
+	p.NewClient = func() gopool.IClient {
+		return &SSDBClient{
+			host: "192.168.56.101",
+			port: 8888,
+		}
+	}
+	p.MinPoolSize = 5
+	p.MaxPoolSize = 100
+	p.MaxWaitSize = 1000
+	p.GetClientTimeout = 5
+	err := p.Start()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	now := time.Now()
+	wait := new(Success)
+	for i := 0; i < 1; i++ {
+		 run(p, wait)
+	}
+	time.Sleep(time.Millisecond*10)
+	println(wait.Show())
+	println(time.Since(now).String())
+	time.Sleep(time.Minute)
+}
+func run(p *gopool.Pool, wait *Success) {
+	for i := 0; i < 10000; i++ {
+		wait.Add()
 		go func(index int) {
-			defer wait.Done()
 			c, e := p.Get()
 			if e != nil {
-				log.Print(e)
+				log.Println(e.Error())
+				wait.Fail()
 				return
 			}
-			time.Sleep(time.Millisecond)
+			//time.Sleep(time.Millisecond * 15)
 			p.Set(c)
+			wait.Ok()
 		}(i)
-		time.Sleep(time.Millisecond)
+		//time.Sleep(time.Millisecond )
 	}
 }
