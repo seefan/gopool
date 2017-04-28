@@ -1,6 +1,7 @@
 package gopool
 
 import (
+	"fmt"
 	"github.com/seefan/goerr"
 	"sync"
 )
@@ -16,10 +17,12 @@ const (
 
 // poolWait
 type Pool struct {
-	//poolWait element count
+	//记数
+	//可用长度
 	length int
-	//used index
-	current   int
+	//当前位置
+	current int
+	//处理等待状态的连接数
 	waitCount int
 	//element list
 	pooled []*PooledClient
@@ -48,13 +51,6 @@ type Pool struct {
 	HealthSecond int
 }
 
-func (p *Pool) init() *Pool {
-	p.defaultConfig()
-	p.pooled = []*PooledClient{}
-	p.poolWait = make(chan *PooledClient, p.MaxWaitSize)
-
-	return p
-}
 func (p *Pool) defaultConfig() {
 	//默认值处理
 	if p.MaxPoolSize < 1 {
@@ -85,6 +81,8 @@ func (p *Pool) defaultConfig() {
 //
 //  返回 err，可能的错误，操作成功返回 nil
 func (p *Pool) Start() error {
+	p.defaultConfig()
+	p.poolWait = make(chan *PooledClient, p.MaxWaitSize)
 	p.waitCount = 0
 	p.current = 0
 	p.length = 0
@@ -105,7 +103,13 @@ func (p *Pool) Start() error {
 
 //new  poolWait and init
 func NewPool() *Pool {
-	return new(Pool).init()
+	return &Pool{
+		pooled: []*PooledClient{},
+	}
+}
+func (p *Pool) Info() string {
+	return fmt.Sprintf(`pool size:%d	actived client:%d	wait create:%d	config max pool size:%d	`,
+		p.length, p.current, p.waitCount, p.MaxPoolSize)
 }
 
 //close all
@@ -116,4 +120,3 @@ func (p *Pool) Close() {
 	}
 	p.current, p.length = 0, 0
 }
-

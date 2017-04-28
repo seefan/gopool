@@ -1,16 +1,18 @@
 package gopool
 
 import (
-	"log"
 	"time"
 )
 
 //watch spare element
 func (p *Pool) watch() {
 	ticker := time.Tick(time.Second * time.Duration(p.HealthSecond))
-	for t := range ticker {
-		log.Println("watch", t, p.current, p.avgCurrent, p.waitCount, p.length)
-		p.check()
+	for range ticker {
+		p.avgCurrent += p.current
+		p.avgCurrent /= 2
+		if p.waitCount == 0 {
+			p.check()
+		}
 	}
 }
 
@@ -18,9 +20,8 @@ func (p *Pool) watch() {
 func (p *Pool) check() {
 	p.lock.Lock()
 	p.lock.Unlock()
+	println(p.avgCurrent, p.length)
 	if p.length > p.MinPoolSize {
-		p.avgCurrent += p.current
-		p.avgCurrent /= 2
 		if p.avgCurrent+p.AcquireIncrement < p.length && !p.pooled[p.length-1].isUsed {
 			p.pooled[p.length-1].Client.Close()
 			p.length -= 1
