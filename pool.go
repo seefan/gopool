@@ -13,6 +13,8 @@ const (
 	PoolStart = 1
 	//连接池状态：关闭
 	PoolStop = -1
+	//连接池状态：重启
+	PoolReStart = 2
 )
 
 // poolWait
@@ -69,7 +71,7 @@ func (p *Pool) defaultConfig() {
 		p.MaxWaitSize = 1000
 	}
 	if p.HealthSecond < 1 {
-		p.HealthSecond = 1
+		p.HealthSecond = 5
 	}
 	if p.MinPoolSize > p.MaxPoolSize {
 		p.MinPoolSize = p.MaxPoolSize

@@ -19,7 +19,10 @@ func (p *Pool) watch() {
 			if t.Sub(lastTime).Seconds() > float64(p.HealthSecond) {
 				p.checkClient()
 				if p.length == 0 {
-					p.init()
+					p.Status = PoolReStart
+					if err := p.init(); err == nil {
+						p.Status = PoolStart
+					}
 				}
 			}
 		}
@@ -30,7 +33,6 @@ func (p *Pool) watch() {
 func (p *Pool) check() {
 	p.lock.Lock()
 	p.lock.Unlock()
-	println("watch", p.Info())
 	if p.length > p.MinPoolSize {
 		if p.length-1 > p.current && p.avgCurrent+p.AcquireIncrement < p.length && !p.pooled[p.length-1].isUsed {
 			p.pooled[p.length-1].Client.Close()
@@ -39,7 +41,6 @@ func (p *Pool) check() {
 	}
 }
 func (p *Pool) checkClient() bool {
-	println("check", p.Info())
 	if c, err := p.getPoolClient(); err == nil {
 		if c.Client.Ping() == false {
 			p.closeClient(c)
