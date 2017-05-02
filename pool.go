@@ -71,7 +71,6 @@ func (p *Pool) defaultConfig() {
 	if p.HealthSecond < 1 {
 		p.HealthSecond = 1
 	}
-
 	if p.MinPoolSize > p.MaxPoolSize {
 		p.MinPoolSize = p.MaxPoolSize
 	}
@@ -86,6 +85,16 @@ func (p *Pool) Start() error {
 	p.waitCount = 0
 	p.current = 0
 	p.length = 0
+	if err := p.init(); err != nil {
+		return err
+	}
+	p.Status = PoolStart
+	go p.watch()
+	return nil
+}
+func (p *Pool) init() error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
 	for i := 0; i < p.MinPoolSize; i++ {
 		client := p.newPooledClient()
 		client.pool = p
@@ -96,8 +105,6 @@ func (p *Pool) Start() error {
 		p.pooled = append(p.pooled, client)
 		p.length += 1
 	}
-	p.Status = PoolStart
-	go p.watch()
 	return nil
 }
 
@@ -114,9 +121,37 @@ func (p *Pool) Info() string {
 
 //close all
 func (p *Pool) Close() {
+	p.lock.Lock()
+	defer p.lock.Unlock()
 	p.Status = PoolStop
 	for _, e := range p.pooled {
 		e.Client.Close()
 	}
 	p.current, p.length = 0, 0
+}
+
+//检查是否可以扩展连接
+//
+//  返回 err，可能的错误，操作成功返回 nil
+func (p *Pool) poolAppend() (err error) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	if p.current < p.MaxPoolSize { //如果没有连接了，检查是否可以自动增加
+		for i := 0; i < p.AcquireIncrement && p.length < p.MaxPoolSize; i++ {
+			var client *PooledClient
+			if len(p.pooled) > p.length {
+				client = p.pooled[p.length]
+			} else {
+				client = p.newPooledClient()
+				client.pool = p
+				client.index = p.length
+				p.pooled = append(p.pooled, client)
+			}
+			if err := client.Client.Start(); err != nil {
+				return goerr.NewError(err, "can not create client")
+			}
+			p.length += 1
+		}
+	}
+	return nil
 }

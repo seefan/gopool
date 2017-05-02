@@ -37,6 +37,10 @@ func (s *SSDBClient) Close() error {
 func (s *SSDBClient) IsOpen() bool {
 	return s.isOpen
 }
+func (s *SSDBClient) Ping() bool {
+	s.conn.Close()
+	return s.Start() == nil
+}
 
 type Success struct {
 	count   int
@@ -82,6 +86,7 @@ func main() {
 	p.MaxPoolSize = 100
 	p.MaxWaitSize = 1000
 	p.GetClientTimeout = 5
+	p.HealthSecond = 10
 	err := p.Start()
 	if err != nil {
 		log.Println(err)
@@ -91,15 +96,15 @@ func main() {
 	now := time.Now()
 	wait := new(Success)
 	for i := 0; i < 1; i++ {
-		 run(p, wait)
+		run(p, wait)
 	}
-	time.Sleep(time.Millisecond*10)
+	time.Sleep(time.Millisecond * 10)
 	println(wait.Show())
 	println(time.Since(now).String())
-	time.Sleep(time.Minute)
+	time.Sleep(time.Minute * 5)
 }
 func run(p *gopool.Pool, wait *Success) {
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 100; i++ {
 		wait.Add()
 		go func(index int) {
 			c, e := p.Get()

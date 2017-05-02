@@ -19,13 +19,14 @@ func (p *Pool) setPoolClient(element *PooledClient) {
 //
 //  cc 连接
 func (p *Pool) Set(element *PooledClient) {
+	lastTime = time.Now()
 	if element == nil {
 		return
 	}
-	p.lock.Lock()
-	defer p.lock.Unlock()
 	if p.Status == PoolStart {
 		if element.Client.IsOpen() {
+			p.lock.Lock()
+			defer p.lock.Unlock()
 			if p.waitCount > 0 { //有等待的连接
 				p.poolWait <- element
 				p.waitCount -= 1
@@ -112,31 +113,7 @@ func (p *Pool) Get() (client *PooledClient, err error) {
 	}
 
 }
-//检查是否可以扩展连接
-//
-//  返回 err，可能的错误，操作成功返回 nil
-func (p *Pool) poolAppend() (err error) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-	if p.current < p.MaxPoolSize { //如果没有连接了，检查是否可以自动增加
-		for i := 0; i < p.AcquireIncrement && p.length < p.MaxPoolSize; i++ {
-			var client *PooledClient
-			if len(p.pooled) > p.length {
-				client = p.pooled[p.length]
-			} else {
-				client = p.newPooledClient()
-				client.pool = p
-				client.index = p.length
-				p.pooled = append(p.pooled, client)
-			}
-			if err := client.Client.Start(); err != nil {
-				return goerr.NewError(err, "can not create client")
-			}
-			p.length += 1
-		}
-	}
-	return nil
-}
+
 func (p *Pool) newPooledClient() *PooledClient {
 	return &PooledClient{
 		Client: p.NewClient(),
