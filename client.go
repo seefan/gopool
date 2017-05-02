@@ -22,6 +22,4 @@ type PooledClient struct {
 	Client IClient
 	//used status
 	isUsed bool
-	//connection is error
-	isError bool
 }
