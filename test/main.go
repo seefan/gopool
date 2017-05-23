@@ -5,6 +5,9 @@ import (
 	"github.com/seefan/gopool"
 	"github.com/ssdb/gossdb/ssdb"
 	"log"
+	"math/rand"
+	"os"
+	"runtime/pprof"
 	"sync"
 	"time"
 )
@@ -74,7 +77,9 @@ func (s *Success) Show() string {
 	return fmt.Sprintf("count:%d,success:%d,fail %d", s.count, s.success, s.fail)
 }
 func main() {
-
+	f, _ := os.Create("profile_file")
+	pprof.StartCPUProfile(f)     // 开始cpu profile，结果写到文件f中
+	defer pprof.StopCPUProfile() // 结束profile
 	p := gopool.NewPool()
 	p.NewClient = func() gopool.IClient {
 		return &SSDBClient{
@@ -82,8 +87,8 @@ func main() {
 			port: 8888,
 		}
 	}
-	p.MinPoolSize = 5
-	p.MaxPoolSize = 100
+	p.MinPoolSize = 10
+	p.MaxPoolSize = 10
 	p.MaxWaitSize = 1000
 	p.GetClientTimeout = 5
 	p.HealthSecond = 10
@@ -95,16 +100,15 @@ func main() {
 
 	now := time.Now()
 	wait := new(Success)
-	for i := 0; i < 1; i++ {
-		run(p, wait)
+	for i := 0; i < 500; i++ {
+		go run(p, wait)
 	}
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Second * 5)
 	println(wait.Show())
 	println(time.Since(now).String())
-	time.Sleep(time.Minute * 5)
 }
 func run(p *gopool.Pool, wait *Success) {
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 1000; i++ {
 		wait.Add()
 		go func(index int) {
 			c, e := p.Get()
@@ -113,10 +117,10 @@ func run(p *gopool.Pool, wait *Success) {
 				wait.Fail()
 				return
 			}
-			//time.Sleep(time.Millisecond * 15)
+			rnd := rand.Float32()
+			time.Sleep(time.Duration(rnd) * time.Second)
 			p.Set(c)
 			wait.Ok()
 		}(i)
-		//time.Sleep(time.Millisecond )
 	}
 }

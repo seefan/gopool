@@ -10,13 +10,12 @@ var (
 
 //watch spare element
 func (p *Pool) watch() {
-	ticker := time.Tick(time.Second)
-	for t := range ticker {
+	for p.Status > 0 {
 		p.avgCurrent += p.current
 		p.avgCurrent /= 2
 		if p.waitCount == 0 {
 			p.check()
-			if t.Sub(lastTime).Seconds() > float64(p.HealthSecond) {
+			if time.Since(lastTime).Seconds() > float64(p.HealthSecond) {
 				p.checkClient()
 				if p.length == 0 {
 					p.Status = PoolReStart
@@ -26,6 +25,7 @@ func (p *Pool) watch() {
 				}
 			}
 		}
+		time.Sleep(time.Second)
 	}
 }
 
