@@ -93,7 +93,7 @@ func (p *Pool) Get() (client *PooledClient, err error) {
 	p.lock.Lock()
 	if p.waitCount >= p.MaxWaitSize {
 		p.lock.Unlock()
-		return nil, goerr.New("poolWait is busy,Wait for connection creation has reached %d", p.waitCount)
+		return nil, goerr.New("pool is busy,Wait for connection creation has reached %d", p.waitCount)
 	}
 	p.waitCount += 1
 	p.lock.Unlock()
@@ -104,10 +104,10 @@ func (p *Pool) Get() (client *PooledClient, err error) {
 		p.lock.Lock()
 		p.waitCount -= 1
 		p.lock.Unlock()
-		return nil, goerr.New("ssdb poolWait is busy,can not get new client in %d seconds", p.GetClientTimeout, p.current, p.length, p.waitCount)
+		return nil, goerr.New("pool is busy,can not get new client in %d seconds", p.GetClientTimeout)
 	case cc := <-p.poolWait:
 		if cc == nil {
-			return nil, goerr.New("the Connectors is Closed, can not get new client.")
+			return nil, goerr.New("pool is Closed, can not get new client.")
 		}
 		return cc, nil
 	}
