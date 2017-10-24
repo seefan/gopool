@@ -15,14 +15,15 @@ func (p *Pool) watch() {
 		p.avgCurrent /= 2
 		if p.waitCount == 0 {
 			p.check()
-			if time.Since(lastTime).Seconds() > float64(p.HealthSecond) {
-				p.checkClient()
+			if p.length <= p.MinPoolSize && time.Since(lastTime).Seconds() > float64(p.HealthSecond) {
+				p.checkPoolClient()
 				if p.length == 0 {
 					p.Status = PoolReStart
 					if err := p.init(); err == nil {
 						p.Status = PoolStart
 					}
 				}
+				lastTime = time.Now()
 			}
 		}
 		time.Sleep(time.Second)
@@ -40,14 +41,18 @@ func (p *Pool) check() {
 		}
 	}
 }
-func (p *Pool) checkClient() bool {
-	if c, err := p.getPoolClient(); err == nil {
-		if c.Client.Ping() == false {
-			p.closeClient(c)
-			return p.checkClient()
-		} else {
-			p.setPoolClient(c)
-		}
+
+//get a element,Current +1
+func (p *Pool) checkPoolClient()  {
+	for i := 0; i < p.MinPoolSize; i++ {
+		go func() {
+			if c, err := p.getPoolClient(); err == nil {
+				if c.Client.Ping() == false {
+					p.closeClient(c)
+				} else {
+					p.setPoolClient(c)
+				}
+			}
+		}()
 	}
-	return true
 }

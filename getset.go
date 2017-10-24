@@ -19,7 +19,7 @@ func (p *Pool) setPoolClient(element *PooledClient) {
 //
 //  cc 连接
 func (p *Pool) Set(element *PooledClient) {
-	lastTime = time.Now()
+	//lastTime = time.Now()
 	if element == nil {
 		return
 	}
