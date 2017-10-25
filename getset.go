@@ -24,12 +24,12 @@ func (p *Pool) Set(element *PooledClient) {
 		return
 	}
 	if p.Status == PoolStart {
+		p.lock.Lock()
+		defer p.lock.Unlock()
 		if element.Client.IsOpen() {
-			p.lock.Lock()
-			defer p.lock.Unlock()
 			if p.waitCount > 0 { //有等待的连接
 				p.poolWait <- element
-				p.waitCount -= 1
+				//p.waitCount -= 1
 			} else {
 				p.setPoolClient(element)
 			}
@@ -45,7 +45,8 @@ func (p *Pool) Set(element *PooledClient) {
 
 //element closed,move to the end , length -1
 func (p *Pool) closeClient(element *PooledClient) {
-	if element.index != p.length-1 {
+
+	if element.index < p.length-1 {
 		p.pooled[p.length-1], p.pooled[element.index] = p.pooled[element.index], p.pooled[p.length-1]
 		p.pooled[p.length-1].index, element.index = element.index, p.pooled[p.length-1].index
 	}
@@ -99,11 +100,13 @@ func (p *Pool) Get() (client *PooledClient, err error) {
 	p.lock.Unlock()
 	//enter slow poolWait
 	timeout := time.After(time.Duration(p.GetClientTimeout) * time.Second)
-	select {
-	case <-timeout:
+	defer func() {
 		p.lock.Lock()
 		p.waitCount -= 1
 		p.lock.Unlock()
+	}()
+	select {
+	case <-timeout:
 		return nil, goerr.New("pool is busy,can not get new client in %d seconds", p.GetClientTimeout)
 	case cc := <-p.poolWait:
 		if cc == nil {

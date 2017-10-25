@@ -29,6 +29,7 @@ func BenchmarkGetSet(b *testing.B) {
 	pool.NewClient = func() IClient {
 		return &SSDBClient{}
 	}
+
 	pool.MinPoolSize = 1
 	pool.MaxPoolSize = 2
 	pool.MaxWaitSize = 100000
