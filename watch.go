@@ -33,7 +33,7 @@ func (p *Pool) watch() {
 //check and close spare element
 func (p *Pool) check() {
 	p.lock.Lock()
-	p.lock.Unlock()
+	defer p.lock.Unlock()
 	if p.length > p.MinPoolSize {
 		if p.length-1 > p.current && p.avgCurrent+p.AcquireIncrement < p.length && !p.pooled[p.length-1].isUsed {
 			p.pooled[p.length-1].Client.Close()
@@ -47,6 +47,8 @@ func (p *Pool) checkPoolClient()  {
 	for i := 0; i < p.MinPoolSize; i++ {
 		go func() {
 			if c, err := p.getPoolClient(); err == nil {
+				p.lock.Lock()
+				defer p.lock.Unlock()
 				if c.Client.Ping() == false {
 					p.closeClient(c)
 				} else {

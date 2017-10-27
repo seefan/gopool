@@ -30,8 +30,8 @@ func BenchmarkGetSet(b *testing.B) {
 		return &SSDBClient{}
 	}
 
-	pool.MinPoolSize = 1
-	pool.MaxPoolSize = 2
+	pool.MinPoolSize = 50
+	pool.MaxPoolSize = 200
 	pool.MaxWaitSize = 100000
 	pool.GetClientTimeout = 5
 	pool.HealthSecond = 10
@@ -53,8 +53,8 @@ func BenchmarkP(b *testing.B) {
 	pool.NewClient = func() IClient {
 		return &SSDBClient{}
 	}
-	pool.MinPoolSize = 10
-	pool.MaxPoolSize = 2000
+	pool.MinPoolSize = 50
+	pool.MaxPoolSize = 200
 	pool.MaxWaitSize = 100000
 	pool.GetClientTimeout = 5
 	pool.HealthSecond = 10
