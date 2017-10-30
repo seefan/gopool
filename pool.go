@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/seefan/goerr"
 	"sync"
+	"time"
 )
 
 const (
@@ -32,8 +33,6 @@ type Pool struct {
 	poolWait chan *PooledClient //连接池
 	//lock
 	lock sync.Mutex
-	//get count
-	avgCurrent int
 	//create new Closed
 	NewClient func() IClient
 	//状态
@@ -51,6 +50,10 @@ type Pool struct {
 	MaxWaitSize int
 	//连接池内缓存的连接状态检查时间隔，单位为秒。默认值: 5
 	HealthSecond int
+	//当前时间
+	now int64
+	//watch
+	watcher *time.Ticker
 }
 
 func (p *Pool) defaultConfig() {
@@ -91,12 +94,14 @@ func (p *Pool) Start() error {
 		return err
 	}
 	p.Status = PoolStart
+	p.watcher = time.NewTicker(time.Second)
 	go p.watch()
 	return nil
 }
 func (p *Pool) init() error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
+	p.Status = PoolInit
 	for i := 0; i < p.MinPoolSize; i++ {
 		client := p.newPooledClient()
 		client.pool = p
@@ -123,8 +128,12 @@ func (p *Pool) Info() string {
 
 //close all
 func (p *Pool) Close() {
+	if p.watcher != nil {
+		p.watcher.Stop()
+	}
 	p.lock.Lock()
 	defer p.lock.Unlock()
+
 	p.Status = PoolStop
 	for _, e := range p.pooled {
 		e.Client.Close()

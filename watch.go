@@ -1,60 +1,55 @@
 package gopool
 
-import (
-	"time"
-)
-
 var (
-	lastTime time.Time
+	checkIndex = 0
 )
-
 //watch spare element
 func (p *Pool) watch() {
-	for p.Status > 0 {
-		p.avgCurrent += p.current
-		p.avgCurrent /= 2
-		if p.waitCount == 0 {
-			p.check()
-			if p.length <= p.MinPoolSize && time.Since(lastTime).Seconds() > float64(p.HealthSecond) {
-				p.checkPoolClient()
+	timeOut := int64(p.HealthSecond)
+	for t := range p.watcher.C {
+		p.now = t.Unix()
+		if p.waitCount == 0 && p.Status == PoolStart {
+			if p.length <= p.MinPoolSize {
+				p.checkMinPoolClient(timeOut)
 				if p.length == 0 {
 					p.Status = PoolReStart
 					if err := p.init(); err == nil {
 						p.Status = PoolStart
 					}
 				}
-				lastTime = time.Now()
+			} else {
+				p.checkPool(timeOut)
 			}
 		}
-		time.Sleep(time.Second)
 	}
 }
 
-//check and close spare element
-func (p *Pool) check() {
+//检查最小连接池以外的连接，current以外的连接如果不用就回收
+func (p *Pool) checkPool(hs int64) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
-	if p.length > p.MinPoolSize {
-		if p.length-1 > p.current && p.avgCurrent+p.AcquireIncrement < p.length && !p.pooled[p.length-1].isUsed {
-			p.pooled[p.length-1].Client.Close()
-			p.length -= 1
-		}
+	checkIt := p.length - 1
+	if p.length > p.MinPoolSize && checkIt > p.current && p.pooled[checkIt] != nil && !p.pooled[checkIt].isUsed && p.pooled[checkIt].lastTime+hs < p.now {
+		p.pooled[checkIt].Client.Close()
+		p.length -= 1
 	}
 }
 
-//get a element,Current +1
-func (p *Pool) checkPoolClient()  {
-	for i := 0; i < p.MinPoolSize; i++ {
-		go func() {
-			if c, err := p.getPoolClient(); err == nil {
-				p.lock.Lock()
-				defer p.lock.Unlock()
-				if c.Client.Ping() == false {
-					p.closeClient(c)
-				} else {
-					p.setPoolClient(c)
-				}
+//检查最小连接池以内的连接，如果不用就ping下，以保持连接一直有数据，如果ping不能，就重启下。重启不成功就关掉。
+func (p *Pool) checkMinPoolClient(hs int64) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	if checkIndex < 0 || checkIndex <= p.current {
+		checkIndex = p.length - 1
+	}
+	//同一个连接检查要间隔HealthSecond秒
+	if p.pooled[checkIndex] != nil && !p.pooled[checkIndex].isUsed && p.pooled[checkIndex].lastTime+hs < p.now {
+		p.pooled[checkIndex].lastTime = p.now
+		if !p.pooled[checkIndex].Client.Ping() {
+			p.pooled[checkIndex].Client.Close()
+			if err := p.pooled[checkIndex].Client.Start(); err != nil {
+				p.length -= 1
 			}
-		}()
+		}
 	}
 }

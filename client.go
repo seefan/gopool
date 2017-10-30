@@ -22,4 +22,6 @@ type PooledClient struct {
 	Client IClient
 	//used status
 	isUsed bool
+	//last time
+	lastTime int64
 }

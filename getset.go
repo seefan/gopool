@@ -19,11 +19,11 @@ func (p *Pool) setPoolClient(element *PooledClient) {
 //
 //  cc 连接
 func (p *Pool) Set(element *PooledClient) {
-	//lastTime = time.Now()
 	if element == nil {
 		return
 	}
 	if p.Status == PoolStart {
+		element.lastTime = p.now //设置最好的回收时间
 		p.lock.Lock()
 		defer p.lock.Unlock()
 		if element.Client.IsOpen() {
