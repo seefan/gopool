@@ -188,7 +188,13 @@ func (p *Pool) Set(element *PooledClient) {
 	}
 	if p.Status == PoolStart {
 		element.lastTime = now //设置最好的回收时间
-		p.pooled.setPoolClient(element)
+		p.lock.RLock()
+		defer p.lock.RUnlock()
+		if p.waitCount > 0 && element.Client.IsOpen() {
+			p.poolWait <- element
+		} else {
+			p.pooled.setPoolClient(element)
+		}
 	} else {
 		if element.Client.IsOpen() {
 			element.Client.Close()
