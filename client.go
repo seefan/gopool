@@ -1,18 +1,30 @@
 package gopool
 
-//element interface
+//连接接口
+//
+// 连接池内的连接结构只要实现这个接口就可以嵌入池内使用
 type IClient interface {
-	//start connection
+	//打开连接
+	//
+	// 返回，error。如果连接到服务器时出错，就返回错误信息，否则返回nil
 	Start() error
-	//close connection
+	//关闭连接
+	//
+	// 返回，error。如果关闭连接时出错，就返回错误信息，否则返回nil
 	Close() error
-	//connection status
+	//是否打开
+	//
+	// 返回，bool。如果已连接到服务器，就返回true。
 	IsOpen() bool
-	//connection ping
+	//检查连接状态
+	//
+	// 返回，bool。如果无法访问服务器，就返回false。
 	Ping() bool
 }
 
-// pooled element
+//缓存的连接
+//
+//内部使用
 type PooledClient struct {
 	//pos
 	index int

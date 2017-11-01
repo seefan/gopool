@@ -2,6 +2,7 @@ package gopool
 
 import (
 	"testing"
+	//"time"
 )
 
 type SSDBClient struct {
@@ -30,8 +31,8 @@ func BenchmarkGetSet(b *testing.B) {
 		return &SSDBClient{}
 	}
 
-	pool.MinPoolSize = 50
-	pool.MaxPoolSize = 200
+	pool.MinPoolSize = 10
+	pool.MaxPoolSize = 0
 	pool.MaxWaitSize = 100000
 	pool.GetClientTimeout = 5
 	pool.HealthSecond = 10
@@ -53,7 +54,7 @@ func BenchmarkP(b *testing.B) {
 	pool.NewClient = func() IClient {
 		return &SSDBClient{}
 	}
-	pool.MinPoolSize = 50
+	pool.MinPoolSize = 10
 	pool.MaxPoolSize = 200
 	pool.MaxWaitSize = 100000
 	pool.GetClientTimeout = 5
@@ -64,9 +65,10 @@ func BenchmarkP(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			if c, e := pool.Get(); e == nil {
+				//time.Sleep(time.Millisecond)
 				pool.Set(c)
 			} else {
-				b.Error(e)
+				//b.Error(e)
 			}
 		}
 	})

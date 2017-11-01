@@ -31,9 +31,9 @@ func main() {
 		return &TestClient{}
 	}
 	pool.MinPoolSize = 50
-	pool.MaxPoolSize = 200
-	pool.MaxWaitSize = 100000
-	pool.GetClientTimeout = 5
+	pool.MaxPoolSize = 1000
+	pool.MaxWaitSize = 10000
+	pool.GetClientTimeout = 10
 	pool.HealthSecond = 10
 	if err := pool.Start(); err == nil {
 		test(pool, 10, 10)
@@ -51,19 +51,21 @@ func main() {
 func test(pool *gopool.Pool, threadCount, callCount int) {
 	now := time.Now()
 	wait := new(sync.WaitGroup)
+	failed := 0
 	for i := 0; i < threadCount; i++ {
 		wait.Add(1)
-		go func(p *gopool.Pool, w *sync.WaitGroup) {
+		go func(p *gopool.Pool, w *sync.WaitGroup, idx int) {
 			for j := 0; j < callCount; j++ {
 				if c, e := p.Get(); e != nil {
-					println(e.Error())
+					failed += 1
 				} else {
 					p.Set(c)
 				}
 			}
 			w.Done()
-		}(pool, wait)
+		}(pool, wait, i)
+
 	}
 	wait.Wait()
-	println("thread=", threadCount, "call=", callCount, "time=", time.Since(now).String())
+	println("thread=", threadCount, "call=", callCount, "failed=", failed, "time=", time.Since(now).String())
 }
