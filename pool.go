@@ -197,11 +197,11 @@ func (p *Pool) Set(element *PooledClient) {
 		if p.waitCount > 0 && element.Client.IsOpen() && element.index%5 == 0 {
 			p.poolWait <- element
 		} else {
-			p.pooled.setPoolClient(element)
+			p.pooled.Set(element)
 		}
 	} else {
 		if element.Client.IsOpen() {
-			element.Client.Close()
+			_=element.Client.Close()
 		}
 	}
 }
