@@ -1,9 +1,9 @@
 package gopool
 
 import (
-	"sync"
-	"github.com/seefan/goerr"
 	"fmt"
+	"github.com/seefan/goerr"
+	"sync"
 )
 
 // 使用slice实现的池
@@ -81,7 +81,7 @@ func (s *Slice) newPooledClient() *PooledClient {
 }
 
 func (s *Slice) Info(v ...interface{}) {
-	b := []int{}
+	var b []int
 	for _, v := range s.pooled {
 		if v != nil {
 			b = append(b, v.index)
@@ -152,7 +152,7 @@ func (s *Slice) Close() {
 	size := len(s.pooled)
 	for i := 0; i < size; i++ {
 		if c := s.pooled[i]; c != nil && c.Client.IsOpen() {
-			c.Client.Close()
+			_ = c.Client.Close()
 		}
 	}
 }

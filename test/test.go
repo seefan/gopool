@@ -36,15 +36,15 @@ func main() {
 	pool.GetClientTimeout = 10
 	pool.HealthSecond = 10
 	if err := pool.Start(); err == nil {
-		test(pool, 10, 10)
-		test(pool, 50, 10)
-		test(pool, 100, 10)
-		test(pool, 200, 10)
-		test(pool, 500, 10)
-		test(pool, 800, 10)
-		test(pool, 1000, 10)
-		test(pool, 3000, 10)
-		test(pool, 5000, 10)
+		test(pool, 10, 100)
+		test(pool, 50, 100)
+		test(pool, 100, 100)
+		test(pool, 200, 100)
+		test(pool, 500, 100)
+		test(pool, 800, 100)
+		test(pool, 1000, 100)
+		test(pool, 3000, 100)
+		test(pool, 5000, 100)
 	}
 }
 
