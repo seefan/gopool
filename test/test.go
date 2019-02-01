@@ -2,8 +2,6 @@ package main
 
 import (
 	"github.com/seefan/gopool"
-	"sync"
-	"time"
 )
 
 type TestClient struct {
@@ -36,36 +34,15 @@ func main() {
 	pool.GetClientTimeout = 10
 	pool.HealthSecond = 10
 	if err := pool.Start(); err == nil {
-		test(pool, 10, 100)
-		test(pool, 50, 100)
-		test(pool, 100, 100)
-		test(pool, 200, 100)
-		test(pool, 500, 100)
-		test(pool, 800, 100)
-		test(pool, 1000, 100)
-		test(pool, 3000, 100)
-		test(pool, 5000, 100)
+		c,err:=pool.Get()
+		c1,err:=pool.Get()
+		if err==nil{
+			c.Client.Ping()
+			c1.Client.Close()
+			pool.Set(c1)
+			pool.Set(c)
+		}
 	}
 }
 
-func test(pool *gopool.Pool, threadCount, callCount int) {
-	now := time.Now()
-	wait := new(sync.WaitGroup)
-	failed := 0
-	for i := 0; i < threadCount; i++ {
-		wait.Add(1)
-		go func(p *gopool.Pool, w *sync.WaitGroup, idx int) {
-			for j := 0; j < callCount; j++ {
-				if c, e := p.Get(); e != nil {
-					failed += 1
-				} else {
-					p.Set(c)
-				}
-			}
-			w.Done()
-		}(pool, wait, i)
 
-	}
-	wait.Wait()
-	println("thread=", threadCount, "call=", callCount, "failed=", failed, "time=", time.Since(now).String())
-}

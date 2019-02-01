@@ -133,18 +133,26 @@ func (s *Slice) setPoolClient(element *PooledClient) {
 }
 
 //关闭连接
+// 当前连接与最后连接交换，可用长度减少，将刚交换的连接放在可用位置
 func (s *Slice) closeClient(element *PooledClient) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	element.isUsed = false
+
 	pos := s.length - 1
+	idx := element.index
 	if element.index < pos {
-		s.pooled[pos], s.pooled[element.index] = s.pooled[element.index], s.pooled[pos]
+		s.pooled[pos].index, element.index = element.index, s.pooled[pos].index
+		s.pooled[pos], s.pooled[idx] = s.pooled[idx], s.pooled[pos]
 	}
 	s.length -= 1
-	if s.current == pos {
-		s.current -= 1
+	element=s.pooled[idx]
+	element.isUsed = false
+	pos = s.current - 1
+	if element.index < pos {
+		s.pooled[pos].index, element.index = element.index, s.pooled[pos].index
+		s.pooled[pos], s.pooled[idx] = s.pooled[idx], s.pooled[pos]
 	}
+	s.current -= 1
 }
 
 //关闭连接池
