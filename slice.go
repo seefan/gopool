@@ -1,8 +1,8 @@
 package gopool
 
 import (
+	"errors"
 	"fmt"
-	"github.com/seefan/goerr"
 	"sync"
 )
 
@@ -60,7 +60,7 @@ func (s *Slice) Append(ai int) error {
 			}
 			if client.Client.IsOpen() == false {
 				if err := client.Client.Start(); err != nil {
-					return goerr.NewError(err, "can not create client")
+					return errors.New("can not create client.cause is " + err.Error())
 				}
 			}
 			s.pooled[size] = client
@@ -104,7 +104,7 @@ func (s *Slice) Get() (*PooledClient, error) {
 		s.current += 1
 		return element, nil
 	}
-	return nil, goerr.New("pool is empty")
+	return nil, errors.New("pool is empty")
 }
 
 //回收连接
@@ -145,7 +145,7 @@ func (s *Slice) closeClient(element *PooledClient) {
 		s.pooled[pos], s.pooled[idx] = s.pooled[idx], s.pooled[pos]
 	}
 	s.length -= 1
-	element=s.pooled[idx]
+	element = s.pooled[idx]
 	element.isUsed = false
 	pos = s.current - 1
 	if element.index < pos {

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/seefan/goerr"
+	"errors"
 )
 
 const (
@@ -130,7 +130,7 @@ func (p *Pool) checkWait() error {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 	if p.waitCount >= p.MaxWaitSize {
-		return goerr.New("pool is busy,Wait for connection creation has reached %d", p.waitCount)
+		return fmt.Errorf("pool is busy,Wait for connection creation has reached %d", p.waitCount)
 	}
 	return nil
 }
@@ -142,9 +142,9 @@ func (p *Pool) checkWait() error {
 func (p *Pool) Get() (client *PooledClient, err error) {
 	switch p.Status {
 	case PoolStop:
-		return nil, goerr.New("the Connectors is Closed, can not get new client.")
+		return nil, errors.New("the Connectors is Closed, can not get new client.")
 	case PoolInit:
-		return nil, goerr.New("the Connectors is not initialized, can not get new client.")
+		return nil, errors.New("the Connectors is not initialized, can not get new client.")
 	}
 	//检查是否有缓存的连接
 	client, err = p.pooled.Get()
@@ -168,10 +168,10 @@ func (p *Pool) Get() (client *PooledClient, err error) {
 	timeout := time.After(time.Duration(p.GetClientTimeout) * time.Second)
 	select {
 	case <-timeout:
-		err = goerr.New("pool is busy,can not get new client in %d seconds", p.GetClientTimeout)
+		err = fmt.Errorf("pool is busy,can not get new client in %d seconds", p.GetClientTimeout)
 	case cc := <-p.poolWait:
 		if cc == nil {
-			err = goerr.New("pool is Closed, can not get new client.")
+			err = errors.New("pool is Closed, can not get new client.")
 		} else {
 			client = cc
 			err = nil
@@ -201,7 +201,7 @@ func (p *Pool) Set(element *PooledClient) {
 		}
 	} else {
 		if element.Client.IsOpen() {
-			_=element.Client.Close()
+			_ = element.Client.Close()
 		}
 	}
 }

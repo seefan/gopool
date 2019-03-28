@@ -38,7 +38,7 @@ func main() {
 		c1,err:=pool.Get()
 		if err==nil{
 			c.Client.Ping()
-			c1.Client.Close()
+			defer c1.Client.Close()
 			pool.Set(c1)
 			pool.Set(c)
 		}
